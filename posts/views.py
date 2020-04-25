@@ -1,8 +1,8 @@
+from datetime import datetime
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Post, Group
-from .forms import CreationForm
-from datetime import datetime
+from .forms import PostForm
 
 
 def index(request):
@@ -13,13 +13,20 @@ def index(request):
 @login_required
 def new_post(request):
     if request.method == 'POST':
-        new_post = Post(pub_date=datetime.now(), author=request.user)
-        form = CreationForm(request.POST, instance=new_post)
+        form = PostForm(request.POST)
         if form.is_valid():
+            form.instance.author = request.user
             form.save()
             return redirect(to='index')
-    else:
-        form = CreationForm()
+        else:
+            #Если валидация формы не пройдет(предположим добавится валидатор)
+            #и я уберу этот else 
+            #пользовтель получит пустую форму, без пояснений и без
+            #введенных ранее данных, так должно работать?
+            #Или перенести создание пустой формы выше проверки на тип запроса
+            #и 2 раза объект формы создавать при post? Так разве лучше будет?
+            return render(request, 'new.html', {'form': form})
+    form = PostForm()
     return render(request, 'new.html', {'form': form})
 
 
