@@ -15,7 +15,7 @@ import os
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-
+SITE_ID = 1
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
 
@@ -25,7 +25,12 @@ SECRET_KEY = '_sszc-jy!jirpth!(tnj48#alsramu-g1bxsc5c67o*3x=ltc7'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "testserver",
+]
 
 
 # Application definition
@@ -36,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
+    "django.contrib.sites",
+    "django.contrib.flatpages",
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
@@ -55,7 +62,7 @@ ROOT_URLCONF = 'yatube.urls'
 
 TEMPLATES_DIR = []
 TEMPLATES_DIR.append(os.path.join(BASE_DIR, 'templates'))
-TEMPLATES_DIR.append(os.path.join(BASE_DIR, 'post','templates'))
+TEMPLATES_DIR.append(os.path.join(BASE_DIR, 'post', 'templates'))
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -129,7 +136,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, "static")
 # Login
 
 LOGIN_URL = "/auth/login/"
-LOGIN_REDIRECT_URL = "index" 
+LOGIN_REDIRECT_URL = "index"
 LOGOUT_REDIRECT_URL = "index"
 
 #  подключаем движок filebased.EmailBackend
