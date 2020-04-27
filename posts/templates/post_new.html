@@ -1,26 +1,42 @@
 {% extends "base.html" %}
-{% block title %}Новый пост{% endblock %}
+{% block title %}
+    {% if edit %}
+        Редактировать запись
+    {% else %}
+        Добавить запись
+    {% endif %}
+{% endblock %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-md-8 p-5">
         <div class="card">
-            <div class="card-header">Новый пост</div>
+            <div class="card-header">
+                {% if edit %}
+                    Редактировать пост
+                {% else %}
+                    Новый пост
+                {% endif %}
+            </div>
             <div class="card-body">
 
                 <form method="post">
                     {% csrf_token %}
                     {% for field in form %}
                     <div class="fieldWrapper">
-                        {{ field.errors }}
                         {{ field.label_tag }} {{ field }}
                         {% if field.help_text %}
                         <p class="help">{{ field.help_text|safe }}</p>
                         {% endif %}
+                        {{ field.errors }}
                     </div>
                     {% endfor %}
                     <div class="col-md-6 offset-md-4">
                         <button type="submit" class="btn btn-primary">
-                            Отправить пост
+                            {% if edit %}
+                            Сохранить
+                            {% else %}
+                            Добавить
+                            {% endif %}
                         </button>
                     </div>
                 </form>
