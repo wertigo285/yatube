@@ -1,67 +1,21 @@
 {% extends "base.html" %}
-{% block title %} Сообщение пользователя {{ author.username }} {% endblock %}
+{% block title %} Сообщение пользователя {{ profile.username }} {% endblock %}
 {% block content %}
+{% load thumbnail %}
 <main role="main" class="container">
     <div class="row">
             <div class="col-md-3 mb-3 mt-1">
-                    <div class="card">
-                            <div class="card-body">
-                                    <div class="h2">
-                                        <!-- Имя автора -->
-                                        {{ author.first_name }} {{ author.last_name }}
-                                    </div>
-                                    <div class="h3 text-muted">
-                                         <!-- username автора -->
-                                         @{{ author.username }}
-                                    </div>
-                            </div>
-                            <ul class="list-group list-group-flush">
-                                    <li class="list-group-item">
-                                            <div class="h6 text-muted">
-                                            Подписчиков: XXX <br />
-                                            Подписан: XXX
-                                            </div>
-                                    </li>
-                                    <li class="list-group-item">
-                                            <div class="h6 text-muted">
-                                                <!-- Количество записей -->
-                                                Записей: {{post_count}}
-                                            </div>
-                                    </li>
-                            </ul>
-                    </div>
+                {% include "profile_information.html" with profile=profile user=user following=following%}
             </div>
 
             <div class="col-md-9">                
                 <!-- Начало блока с отдельным постом --> 
-                    <div class="card mb-3 mt-1 shadow-sm">
-                            <div class="card-body">
-                                    <p class="card-text">
-                                            <!-- Ссылка на страницу автора в атрибуте href; username автора в тексте ссылки -->
-                                            <a href="/{{ author.username }}/"><strong class="d-block text-gray-dark">@{{ author.username }}</strong></a>
-                                            <!-- Текст поста -->
-                                            {{ post.text }} 
-                                    </p>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                            <div class="btn-group ">
-                                                {% if user.is_authenticated %}
-                                                    <!-- Ссылка на редактирование, показывается только автору записи -->
-                                                    {% if user == author %}
-                                                        <a class="btn btn-sm text-muted" href="/{{ author.username }}/{{ post.id }}/edit" role="button">Редактировать</a>
-                                                    {% endif %}
-                                                {% endif %}
-                                            </div>
-                                            <!-- Дата публикации  -->
-                                            <small class="text-muted">{{ post.pub_date }}</small>
-                                    </div>
-                            </div>
-                    </div>
+                {% include "post_item.html" with post=post %}
                 <!-- Конец блока с отдельным постом -->
 
-                <!-- Остальные посты -->  
+                {% include "comments.html" %} 
 
-                <!-- Здесь постраничная навигация паджинатора -->
-     </div>
+            </div>
     </div>
 </main>
 {% endblock %}
