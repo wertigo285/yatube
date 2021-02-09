@@ -14,8 +14,8 @@ from .models import Post, User, Group, Follow
 class Test(TestCase):
     def create_user_post(self):
         author = User.objects.create_user(
-            username=str(uuid1()), email='test@example.com', password='test_password')  
-        post = Post.objects.create(text=str(uuid1()),author=author)
+            username=str(uuid1()), email='test@example.com', password='test_password')
+        post = Post.objects.create(text=str(uuid1()), author=author)
         return post
 
     def create_temp_image_file(self):
@@ -66,13 +66,13 @@ class Test(TestCase):
                             msg_prefix='Текст сообщения в профиле пользователя несоответствует ожидаемому.')
         self.post_image_check(response, post, 'странице профиля пользователя')
 
-    def post_follow_check(self,post,follow=False):
+    def post_follow_check(self, post, follow=False):
         cache.clear()
-        response = self.client.get(f'/follow/')
+        response = self.client.get('/follow/')
         if follow:
-            self.assertContains(response,post.text,msg_prefix='На странице ленты подписок не отображается пост подписанного автора')
+            self.assertContains(response, post.text, msg_prefix='На странице ленты подписок не отображается пост подписанного автора')
         else:
-            self.assertNotContains(response,post.text,msg_prefix='На странице ленты подписок отображается пост подписанного автора')
+            self.assertNotContains(response, post.text, msg_prefix='На странице ленты подписок отображается пост подписанного автора')
 
     def setUp(self):
         self.client = Client()
@@ -171,13 +171,12 @@ class Test(TestCase):
         self.assertEqual(response.status_code, 404,
                          msg='При запросе несуществующей страницы код ответа отличен от 404')
 
-    def test_cahe(self):
+    def test_cache(self):
         self.client.force_login(self.user)
 
         response = self.client.get('/')
 
         test_text = str(uuid1())
-        new_post = Post.objects.create(text=test_text, author=self.user)
 
         response = self.client.get('/')
         self.assertNotContains(
@@ -192,32 +191,28 @@ class Test(TestCase):
 
     def test_follow(self):
         post = self.create_user_post()
-        
+
         response = self.client.get('/follow/')
         self.assertRedirects(response, '/auth/login/?next=/follow/',
                              msg_prefix='Неавторизованному пользователю доступна страница ленты подписки')
-        
+
         self.client.force_login(self.user)
-        self.post_follow_check(post,False)
-        
+        self.post_follow_check(post, False)
+
         self.client.get(f'/{post.author.username}/follow/')
-        self.post_follow_check(post,True)
-        
+        self.post_follow_check(post, True)
+
         self.client.get(f'/{post.author.username}/unfollow/')
-        self.post_follow_check(post,False)
+        self.post_follow_check(post, False)
 
     def test_comment(self):
         post = self.create_user_post()
 
         comment_text = str(uuid1())
-        response = self.client.post(f'/{post.author.username}/{post.id}/comment/',{'text': comment_text})
-        self.assertRedirects(response,f'/auth/login/?next=/{post.author.username}/{post.id}/comment/',msg_prefix='Отправка комментариев доступна неавторизованному пользователю')
+        response = self.client.post(f'/{post.author.username}/{post.id}/comment/', {'text': comment_text})
+        self.assertRedirects(response, f'/auth/login/?next=/{post.author.username}/{post.id}/comment/', msg_prefix='Отправка комментариев доступна неавторизованному пользователю')
 
         self.client.force_login(self.user)
-        self.client.post(f'/{post.author.username}/{post.id}/comment/',{'text': comment_text})
+        self.client.post(f'/{post.author.username}/{post.id}/comment/', {'text': comment_text})
         response = self.client.get(f'/{post.author.username}/{post.id}/')
-        self.assertContains(response,comment_text,msg_prefix='Отправленный авторизованным пользователем комментарий не отображается на странице просмотра записи')
-
-
-        
-
+        self.assertContains(response, comment_text, msg_prefix='Отправленный авторизованным пользователем комментарий не отображается на странице просмотра записи')

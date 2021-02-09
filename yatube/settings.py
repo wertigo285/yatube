@@ -63,7 +63,6 @@ ROOT_URLCONF = 'yatube.urls'
 
 TEMPLATES_DIR = []
 TEMPLATES_DIR.append(os.path.join(BASE_DIR, 'templates'))
-TEMPLATES_DIR.append(os.path.join(BASE_DIR, 'post', 'templates'))
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
