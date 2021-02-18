@@ -1,24 +1,24 @@
 {% extends "base.html" %}
-{% block title %} Профиль пользователя {{ profile.username }} {% endblock %}
+{% block title %} Профиль пользователя {{ object.username }} {% endblock %}
 {% block content %}
 {% load thumbnail %}
 <main role="main" class="container">
         <div class="row">
                 <div class="col-md-3 mb-3 mt-1">
-                        {% include "profile_information.html" with profile=profile user=user following=following%}
+                        {% include "profile_information.html" with profile=object user=user following=following%}
                 </div>
 
                 <div class="col-md-9">
-                        {% for post in page %}
+                        {% for post in object_list %}
                         <!-- Начало блока с отдельным постом -->
-                                {% include "post_item.html" with post=post %}
+                                {% include "post_item.html" with post=post user=user %}
                         <!-- Конец блока с отдельным постом -->
                         {% endfor %}
 
                         <!-- Остальные посты -->
 
-                        {% if page.has_other_pages %}
-                                {% include "paginator.html" with items=page paginator=paginator%}
+                        {% if is_paginated %}
+                                {% include "paginator.html" with items=page_obj paginator=paginator%}
                         {% endif %}
                 </div>
         </div>

@@ -1,180 +1,206 @@
-from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.db.models import Count
-from django.shortcuts import render, get_object_or_404, get_list_or_404, redirect
+from django.shortcuts import get_object_or_404
+from django.views.generic import RedirectView, TemplateView
+from django.views.generic.list import ListView
+from django.views.generic.detail import SingleObjectMixin
+from django.views.generic.edit import CreateView, FormMixin, UpdateView
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.urls import reverse_lazy
 
 
-from .models import Post, Group, User, Comment, Follow
-from .forms import PostForm, CommentForm
+from .models import Comment, Follow, Group, Post, User
+from .forms import CommentForm, PostForm
 
 
-def index(request):
-    post_list = Post.objects.select_related('author').order_by('-pub_date')
-    paginator = Paginator(post_list, 10)
-
-    page_number = request.GET.get('page')
-    page = paginator.get_page(page_number)
-    return render(request, 'index.html', {'page': page, 'paginator': paginator})
-
-
-@login_required
-def new_post(request):
-    form = PostForm(request.POST or None, files=request.FILES or None)
-    if request.method == 'POST':
-        if form.is_valid():
-            form.instance.author = request.user
-            form.save()
-            return redirect(to='index')
-        return render(request, 'post_new.html', {'form': form})
-
-    return render(request, 'post_new.html', {'form': form})
+class PostList(ListView):
+    model = Post
+    queryset = Post.objects.select_related('author', 'group').annotate(
+        comment_count=Count('post_comments', distinct=True)
+    )
+    template_name = 'index.html'
+    paginate_by = 10
 
 
-def group_posts(request, slug):
-    group = get_object_or_404(Group, slug=slug)
+class FollowList(LoginRequiredMixin, PostList):
+    template_name = 'follow.html'
 
-    posts = Post.objects.select_related('author', 'group').filter(
-        group=group).order_by('-pub_date')
-    paginator = Paginator(posts, 10)
-
-    page_number = request.GET.get('page')
-    page = paginator.get_page(page_number)
-
-    return render(request, 'group.html', {'group': group, 'page': page, 'paginator': paginator})
+    def get_queryset(self):
+        user = self.request.user
+        return self.queryset.filter(author__in=Follow.objects.filter(
+            user=user).values('author'))
 
 
-def profile(request, username):
-    profile = get_object_or_404(User.objects
-                                .filter(username=username)
-                                .annotate(
-                                    post_count=Count(
-                                        'author_posts', distinct=True),
-                                    followers_count=Count(
-                                        'following', distinct=True),
-                                    following_count=Count(
-                                        'follower', distinct=True)
-                                ))
-    posts = Post.objects.select_related('author', 'group').filter(
-        author=profile).order_by('-pub_date')
-    following = False
-    if request.user.is_authenticated:
-        following = Follow.objects.filter(
-            user=request.user, author=profile).exists()
+class GroupView(SingleObjectMixin, PostList):
+    template_name = 'group.html'
+    queryset = PostList.queryset
 
-    paginator = Paginator(posts, 10)
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object(queryset=Group.objects.all())
+        return super().get(request, *args, **kwargs)
 
-    page_number = request.GET.get('page')
-    page = paginator.get_page(page_number)
-
-    return render(request, 'profile.html', {
-        'profile': profile,
-        'page': page,
-        'paginator': paginator,
-        'following': following,
-    })
+    def get_queryset(self):
+        return self.queryset.filter(group=self.object)
 
 
-def post_view(request, username, post_id):
-
-    profile = get_object_or_404(User.objects
-                                .filter(username=username)
-                                .annotate(
-                                    post_count=Count(
-                                        'author_posts', distinct=True),
-                                    followers_count=Count(
-                                        'following', distinct=True),
-                                    following_count=Count(
-                                        'follower', distinct=True)
-                                ))
-    post = get_object_or_404(Post.objects.select_related(
-        'author').filter(author=profile, pk=post_id))
-    following = False
-    if request.user.is_authenticated:
-        following = Follow.objects.filter(
-            user=request.user, author=profile).exists()
-
-    comment_form = CommentForm()
-
-    comments = Comment.objects.select_related(
-        'author').filter(post=post).order_by('-created')
-
-    paginator = Paginator(comments, 10)
-    page_number = request.GET.get('page')
-    page = paginator.get_page(page_number)
-
-    return render(request, 'post.html', {
-        'profile': profile,
-        'post': post,
-        'form': comment_form,
-        'page': page,
-        'paginator': paginator,
-        'following': following,
-        'comments': comments  # без этой строки не загрузить проект
-    })
+class PostMixin:
+    model = Post
+    form_class = PostForm
 
 
-@login_required
-def post_edit(request, username, post_id):
-    author = get_object_or_404(User, username=username)
-    post = get_object_or_404(Post, author=author, pk=post_id)
+class CreatePost(PostMixin, LoginRequiredMixin, CreateView):
+    template_name = 'post_new.html'
+    success_url = reverse_lazy('index')
 
-    if request.user != author:
-        return redirect(to='post', username=username, post_id=post_id)
-
-    form = PostForm(request.POST or None,
-                    files=request.FILES or None, instance=post)
-    if request.method == 'POST':
-        if form.is_valid():
-            form.save()
-            return redirect(to='post', username=username, post_id=post_id)
-    return render(request, 'post_new.html', {'form': form, 'post': post})
+    def form_valid(self, form):
+        form.instance.author = self.request.user
+        return super().form_valid(form)
 
 
-def page_not_found(request, exception):
-    return render(request, 'misc/404.html', {'path': request.path}, status=404)
+class PostUpdate(PostMixin, LoginRequiredMixin, UpdateView):
+    template_name = 'post_new.html'
+    slug_field = 'author__username'
+    slug_url_kwarg = 'username'
+    pk_url_kwarg = 'post_id'
+    query_pk_and_slug = True
+
+    def get_object(self, *args, **kwargs):
+        user = self.request.user
+        return super().get_object(
+            queryset=self.get_queryset().filter(author=user))
+
+    def get_success_url(self):
+        return reverse_lazy('post', kwargs=self.kwargs)
 
 
-def server_error(request):
-    return render(request, 'misc/500.html', status=500)
+class ProfileMixin(SingleObjectMixin):
+    template_name = 'profile.html'
+    slug_field = 'username'
+    slug_url_kwarg = 'username'
+    ordering = '-pub_date'
+    paginate_by = 10
+
+    def get(self, request, *args, **kwargs):
+        self.object = self.get_object(queryset=User.objects.annotate(
+            post_count=Count(
+                'author_posts', distinct=True),
+            followers_count=Count(
+                'following', distinct=True),
+            following_count=Count(
+                'follower', distinct=True)
+        ).all())
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        following = False
+        if self.request.user.is_authenticated:
+            following = Follow.objects.filter(
+                user=self.request.user, author=self.object).exists()
+        context['following'] = following
+
+        return context
 
 
-@login_required
-def add_comment(request, username, post_id):
-    profile = get_object_or_404(User, username=username)
-    post = get_object_or_404(Post, author=profile, pk=post_id)
-    if request.POST:
-        comment_form = CommentForm(request.POST)
-        if comment_form.is_valid():
-            comment_form.instance.author = request.user
-            comment_form.instance.post = post
-            comment_form.save()
-    return redirect(to='post', username=username, post_id=post_id)
+class ProfileView(ProfileMixin, PostList):
+
+    queryset = PostList.queryset
+
+    def get_queryset(self):
+        return self.queryset.filter(author=self.object)
 
 
-@login_required
-def follow_index(request):
-    posts = Post.objects.select_related("author", "group").filter(
-        author__in=Follow.objects.filter(user=request.user).values('author')).order_by("-pub_date")
-    paginator = Paginator(posts, 10)
+class PostView(ProfileMixin, FormMixin, ListView):
+    template_name = 'post.html'
+    form_class = CommentForm
+    ordering = '-created'
+    paginate_by = 10
 
-    page_number = request.GET.get('page')
-    page = paginator.get_page(page_number)
-    return render(request, 'follow.html', {'page': page, 'paginator': paginator})
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['post'] = self.post
 
+        return context
 
-@login_required
-def profile_follow(request, username):
-    author = get_object_or_404(User, username=username)
-    if request.user != author:
-        Follow.objects.get_or_create(user=request.user, author=author)
-
-    return redirect(to='profile', username=username)
+    def get_queryset(self):
+        self.post = get_object_or_404(
+            Post, author=self.object, pk=self.kwargs['post_id'])
+        return self.post.post_comments.select_related('author')
 
 
-@login_required
-def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username)
-    if request.user != author:
-        Follow.objects.filter(user=request.user, author=author).delete()
+class CommentCreate(LoginRequiredMixin, CreateView):
+    http_method_names = ['post']
+    model = Comment
+    fields = ['text']
 
-    return redirect(to='profile', username=username)
+    def form_valid(self, form):
+        post = get_object_or_404(
+            Post, author__username=self.kwargs['username'],
+            pk=self.kwargs['post_id'])
+        form.instance.author = self.request.user
+        form.instance.post = post
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse_lazy('post', kwargs=self.kwargs)
+
+
+class FollowMixin(RedirectView):
+
+    def get_redirect_url(self, *args, **kwargs):
+        return reverse_lazy('profile', kwargs=self.kwargs)
+
+    def is_author(self, request, **kwargs):
+        self.author = get_object_or_404(User, **kwargs)
+        return request.user == self.author
+
+
+class FollowCreate(FollowMixin):
+
+    def get(self, request, *args, **kwargs):
+        if not self.is_author(request, **kwargs):
+            Follow.objects.get_or_create(user=request.user, author=self.author)
+        return super().get(request, *args, **kwargs)
+
+
+class FollowDelete(FollowMixin):
+
+    def get(self, request, *args, **kwargs):
+        if not self.is_author(request, **kwargs):
+            Follow.objects.filter(
+                user=request.user, author=self.author).delete()
+        return super().get(request, *args, **kwargs)
+
+
+class ErrorView(TemplateView):
+    code = 0
+
+    def get(self, request, *args, **kwargs):
+        response = super().get(request, *args, **kwargs)
+        response.status_code = self.code
+        return response
+
+    @classmethod
+    def get_rendered_view(cls):
+        as_view_fn = cls.as_view()
+
+        def view_fn(request, *args, **kwargs):
+            response = as_view_fn(request)
+            response.render()
+            return response
+
+        return view_fn
+
+
+class Template404View(ErrorView):
+    template_name = "misc/404.html"
+    code = 404
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['path'] = self.request.path
+        return context
+
+
+class Template500View(ErrorView):
+    template_name = "misc/500.html"
+    code = 500

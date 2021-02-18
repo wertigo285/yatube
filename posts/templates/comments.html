@@ -19,9 +19,7 @@
 </form>
 </div>
 {% endif %}
-
-<!-- Комментарии -->
-{% for item in page %}
+{% for item in page_obj%}
 <div class='media mb-4'>
 <div class='media-body'>
         <h5 class='mt-0'>
@@ -39,6 +37,6 @@
 
 {% endfor %}
 
-{% if page.has_other_pages %}
-        {% include 'paginator.html' with items=page paginator=paginator%}
+{% if is_paginated %}
+        {% include 'paginator.html' with items=page_obj paginator=paginator%}
 {% endif %}

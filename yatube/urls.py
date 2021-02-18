@@ -5,8 +5,10 @@ from django.views.static import serve
 from django.conf.urls import handler404, handler500
 from django.conf.urls.static import static
 
-handler404 = 'posts.views.page_not_found'  # noqa
-handler500 = 'posts.views.server_error'  # noqa
+from posts.views import Template404View, Template500View
+
+handler404 = Template404View.get_rendered_view()  # noqa
+handler500 = Template500View.get_rendered_view()  # noqa
 
 urlpatterns = [
     path('about/', include('django.contrib.flatpages.urls')),

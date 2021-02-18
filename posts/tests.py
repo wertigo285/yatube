@@ -8,7 +8,7 @@ from django.core.cache.utils import make_template_fragment_key
 from PIL import Image
 from sorl.thumbnail import delete
 
-from .models import Post, User, Group, Follow
+from .models import Post, User
 
 
 class Test(TestCase):
@@ -177,6 +177,8 @@ class Test(TestCase):
         response = self.client.get('/')
 
         test_text = str(uuid1())
+        new_post = Post.objects.create(text=test_text, author=self.user)
+        new_post.save()
 
         response = self.client.get('/')
         self.assertNotContains(

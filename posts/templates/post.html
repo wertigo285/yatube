@@ -5,16 +5,12 @@
 <main role="main" class="container">
     <div class="row">
             <div class="col-md-3 mb-3 mt-1">
-                {% include "profile_information.html" with profile=profile user=user following=following%}
+                {% include "profile_information.html" with profile=object user=user following=following %}
             </div>
 
-            <div class="col-md-9">                
-                <!-- Начало блока с отдельным постом --> 
-                {% include "post_item.html" with post=post %}
-                <!-- Конец блока с отдельным постом -->
-
+            <div class="col-md-9">                 
+                {% include "post_item.html" with post=post user=user from_post=True %}
                 {% include "comments.html" %} 
-
             </div>
     </div>
 </main>

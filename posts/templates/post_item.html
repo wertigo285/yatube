@@ -25,16 +25,18 @@
             <!-- Отображение ссылки на комментарии -->
             <div class="d-flex justify-content-between align-items-center">
                     <div class="btn-group ">
+                            {% if not from_post %}    
                             <a class="btn btn-sm text-muted" href="{% url 'post' post.author.username post.id %}" role="button">
                                     {% if post.comment_count %}
                                         {{ post.comment_count }} комментариев
-                                    {% else%}
+                                    {% else %}
                                          Добавить комментарий
                                     {% endif %}
                             </a>
+                            {% endif %}
 
                             <!-- Ссылка на редактирование поста для автора -->
-                            {% if user == post.author %}
+                            {% if request.user == post.author %}
                                 <a class="btn btn-sm text-muted" href="{% url 'post_edit' post.author.username post.id %}"
                                         role="button">
                                         Редактировать
