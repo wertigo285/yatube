@@ -15,7 +15,7 @@ from .forms import CommentForm, PostForm
 class PostList(ListView):
     model = Post
     queryset = Post.objects.select_related('author', 'group').annotate(
-        comment_count=Count('post_comments', distinct=True)
+        comment_count=Count('comments', distinct=True)
     )
     template_name = 'index.html'
     paginate_by = 10
@@ -124,7 +124,7 @@ class PostView(ProfileMixin, FormMixin, ListView):
     def get_queryset(self):
         self.post = get_object_or_404(
             Post, author=self.object, pk=self.kwargs['post_id'])
-        return self.post.post_comments.select_related('author')
+        return self.post.comments.select_related('author')
 
 
 class CommentCreate(LoginRequiredMixin, CreateView):

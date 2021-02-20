@@ -1,5 +1,6 @@
 from tempfile import NamedTemporaryFile
 from uuid import uuid1
+from pathlib import Path
 
 from django.test import TestCase, Client
 from django.conf import settings
@@ -19,6 +20,7 @@ class Test(TestCase):
         return post
 
     def create_temp_image_file(self):
+
         image_file = NamedTemporaryFile(
             suffix='.jpg', dir=settings.MEDIA_ROOT, delete=False)
 
@@ -29,7 +31,7 @@ class Test(TestCase):
 
     def create_temp_text_file(self):
         text_file = NamedTemporaryFile(
-            suffix='.txt', dir=settings.MEDIA_ROOT, delete=False)
+            suffix='.txt', dir=settings.MEDIA_ROOT, delete=False,)
 
         text_file.write('test'.encode())
         text_file.seek(0)
@@ -78,6 +80,7 @@ class Test(TestCase):
         self.client = Client()
         self.user = User.objects.create_user(
             username='test_user', email='test@example.com', password='test_password')
+        Path(settings.MEDIA_ROOT).mkdir(exist_ok=True)
 
     def test_profile(self):
         self.client.force_login(self.user)

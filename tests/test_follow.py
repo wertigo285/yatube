@@ -1,139 +1,95 @@
-import re
-import tempfile
-
 import pytest
-from django.contrib.auth import get_user_model
-from django.core.paginator import Paginator, Page
-from django.db.models import fields
-
-try:
-    from posts.models import Post
-except ImportError:
-    assert False, 'Не найдена модель Post'
-
-try:
-    from posts.models import Follow
-except ImportError:
-    assert False, 'Не найдена модель Follow'
+from posts.models import Follow
 
 
-def search_field(fields, attname):
-    for field in fields:
-        if attname == field.attname:
-            return field
-    return None
-
-
-def search_refind(execution, user_code):
-    """Поиск запуска"""
-    for temp_line in user_code.split('\n'):
-        if re.search(execution, temp_line):
-            return True
-    return False
-
-
-class TestFollow:
-
-    def test_follow(self):
-        model_fields = Follow._meta.fields
-
-        user_field = search_field(model_fields, 'user_id')
-        assert user_field is not None, 'Добавьте пользователя, автор который создал событие `user` модели `Follow`'
-        assert type(user_field) == fields.related.ForeignKey, \
-            'Свойство `user` модели `Follow` должно быть ссылкой на другую модель `ForeignKey`'
-        assert user_field.related_model == get_user_model(), \
-            'Свойство `user` модели `Follow` должно быть ссылкой на модель пользователя `User`'
-        assert user_field.remote_field.related_name == 'follower', \
-            'Свойство `user` модели `Follow` должно иметь аттрибут `related_name="follower"`'
-        # assert user_field.on_delete == CASCADE, \
-        #     'Свойство `user` модели `Follow` должно иметь аттрибут `on_delete=models.CASCADE`'
-
-        author_field = search_field(model_fields, 'author_id')
-        assert author_field is not None, 'Добавьте пользователя, автор который создал событие `author` модели `Follow`'
-        assert type(author_field) == fields.related.ForeignKey, \
-            'Свойство `author` модели `Follow` должно быть ссылкой на другую модель `ForeignKey`'
-        assert author_field.related_model == get_user_model(), \
-            'Свойство `author` модели `Follow` должно быть ссылкой на модель пользователя `User`'
-        assert author_field.remote_field.related_name == 'following', \
-            'Свойство `author` модели `Follow` должно иметь аттрибут `related_name="following"`'
-        # assert author_field.on_delete == CASCADE, \
-        #     'Свойство `author` модели `Follow` должно иметь аттрибут `on_delete=models.CASCADE`'
-
-    def check_url(self, client, url, str_url):
-        try:
-            response = client.get(f'{url}')
-        except Exception as e:
-            assert False, f'''Страница `{str_url}` работает неправильно. Ошибка: `{e}`'''
-        if response.status_code in (301, 302) and response.url == f'{url}/':
-            response = client.get(f'{url}/')
-        assert response.status_code != 404, f'Страница `{str_url}` не найдена, проверьте этот адрес в *urls.py*'
-        return response
+class TestFollowAPI:
 
     @pytest.mark.django_db(transaction=True)
-    def test_follow_not_auth(self, client, user):
-        response = self.check_url(client, '/follow', '/follow/')
-        if not(response.status_code in (301, 302) and response.url.startswith(f'/auth/login')):
-            assert False, \
-                'Проверьте, что не авторизованного пользователя `/follow/` отправляете на страницу авторизации'
+    def test_follow_not_found(self, client, follow_1, follow_2):
+        response = client.get('/api/v1/follow/')
 
-        response = self.check_url(client, f'/{user.username}/follow', '/<username>/follow/')
-        if not(response.status_code in (301, 302) and response.url.startswith(f'/auth/login')):
-            assert False, 'Проверьте, что не авторизованного пользователя `/<username>/follow/` ' \
-                          'отправляете на страницу авторизации'
-
-        response = self.check_url(client, f'/{user.username}/unfollow', '/<username>/unfollow/')
-        if not(response.status_code in (301, 302) and response.url.startswith(f'/auth/login')):
-            assert False, 'Проверьте, что не авторизованного пользователя `/<username>/unfollow/` ' \
-                          'отправляете на страницу авторизации'
+        assert response.status_code != 404, 'Страница `/api/v1/follow/` не найдена, проверьте этот адрес в *urls.py*'
 
     @pytest.mark.django_db(transaction=True)
-    def test_follow_auth(self, user_client, user, post):
-        assert user.follower.count() == 0, 'Проверьте, что правильно считается подписки'
-        self.check_url(user_client, f'/{post.author.username}/follow', '/<username>/follow/')
-        assert user.follower.count() == 0, 'Проверьте, что нельзя подписаться на самого себя'
+    def test_follow_not_auth(self, client, follow_1, follow_2):
+        response = client.get('/api/v1/follow/')
+        assert response.status_code == 200,\
+            'Проверьте, что `/api/v1/follow/` при запросе без токена возвращаете статус 200'
 
-        user_1 = get_user_model().objects.create_user(username='TestUser_2344')
-        user_2 = get_user_model().objects.create_user(username='TestUser_73485')
+    @pytest.mark.django_db(transaction=True)
+    def test_follow_get(self, user_client, follow_1, follow_2, follow_3):
+        response = user_client.get('/api/v1/follow/')
+        assert response.status_code == 200, \
+            'Проверьте, что при GET запросе `/api/v1/follow/` с токеном авторизации возвращаетсся статус 200'
 
-        self.check_url(user_client, f'/{user_1.username}/follow', '/<username>/follow/')
-        assert user.follower.count() == 1, 'Проверьте, что вы можете подписаться на пользователя'
-        self.check_url(user_client, f'/{user_1.username}/follow', '/<username>/follow/')
-        assert user.follower.count() == 1, 'Проверьте, что вы можете подписаться на пользователя только один раз'
+        test_data = response.json()
 
-        image = tempfile.NamedTemporaryFile(suffix=".jpg").name
-        Post.objects.create(text='Тестовый пост 4564534', author=user_1, image=image)
-        Post.objects.create(text='Тестовый пост 354745', author=user_1, image=image)
+        assert type(test_data) == list, 'Проверьте, что при GET запросе на `/api/v1/follow/` возвращается список'
 
-        Post.objects.create(text='Тестовый пост 245456', author=user_2, image=image)
-        Post.objects.create(text='Тестовый пост 9789', author=user_2, image=image)
-        Post.objects.create(text='Тестовый пост 4574', author=user_2, image=image)
+        assert len(test_data) == Follow.objects.count(), \
+            'Проверьте, что при GET запросе на `/api/v1/follow/` возвращается весь список подписок'
 
-        response = self.check_url(user_client, f'/follow', '/follow/')
-        assert 'paginator' in response.context, \
-            'Проверьте, что передали переменную `paginator` в контекст страницы `/follow/`'
-        assert type(response.context['paginator']) == Paginator, \
-            'Проверьте, что переменная `paginator` на странице `/follow/` типа `Paginator`'
-        assert 'page_obj' in response.context, \
-            'Проверьте, что передали переменную `page` в контекст страницы `/follow/`'
-        assert type(response.context['page_obj']) == Page, \
-            'Проверьте, что переменная `page` на странице `/follow/` типа `Page`'
-        assert len(response.context['page_obj']) == 2, \
-            'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
+        follow = Follow.objects.all()[0]
+        test_group = test_data[0]
+        assert 'user' in test_group, \
+            'Проверьте, что добавили `user` в список полей `fields` сериализатора модели Follow'
+        assert 'following' in test_group, \
+            'Проверьте, что добавили `following` в список полей `fields` сериализатора модели Follow'
 
-        self.check_url(user_client, f'/{user_2.username}/follow', '/<username>/follow/')
-        assert user.follower.count() == 2, 'Проверьте, что вы можете подписаться на пользователя'
-        response = self.check_url(user_client, f'/follow', '/follow/')
-        assert len(response.context['page_obj']) == 5, \
-            'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
+        assert test_group['user'] == follow.user.username, \
+            'Проверьте, что при GET запросе на `/api/v1/follow/` возвращается весь список подписок, ' \
+            'в поле `user` должен быть `username`'
+        assert test_group['following'] == follow.author.username, \
+            'Проверьте, что при GET запросе на `/api/v1/follow/` возвращается весь список подписок, ' \
+            'в поле `following` должен быть `username`'
 
-        self.check_url(user_client, f'/{user_1.username}/unfollow', '/<username>/unfollow/')
-        assert user.follower.count() == 1, 'Проверьте, что вы можете отписаться от пользователя'
-        response = self.check_url(user_client, f'/follow', '/follow/')
-        assert len(response.context['page_obj']) == 3, \
-            'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
+    @pytest.mark.django_db(transaction=True)
+    def test_follow_create(self, user_client, follow_2, follow_3, user, user_2, another_user):
+        follow_count = Follow.objects.count()
 
-        self.check_url(user_client, f'/{user_2.username}/unfollow', '/<username>/unfollow/')
-        assert user.follower.count() == 0, 'Проверьте, что вы можете отписаться от пользователя'
-        response = self.check_url(user_client, f'/follow', '/follow/')
-        assert len(response.context['page_obj']) == 0, \
-            'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
+        data = {}
+        response = user_client.post('/api/v1/follow/', data=data)
+        assert response.status_code == 400, \
+            'Проверьте, что при POST запросе на `/api/v1/follow/` с не правильными данными возвращается статус 400'
+
+        data = {'following': another_user.username}
+        response = user_client.post('/api/v1/follow/', data=data)
+        assert response.status_code == 201, \
+            'Проверьте, что при POST запросе на `/api/v1/follow/` с правильными данными возвращается статус 201'
+
+        test_data = response.json()
+
+        msg_error = 'Проверьте, что при POST запросе на `/api/v1/follow/` возвращается словарь с данными новой подписки'
+        assert type(test_data) == dict, msg_error
+        assert test_data.get('user') == user.username, msg_error
+        assert test_data.get('following') == data['following'], msg_error
+
+        assert follow_count + 1 == Follow.objects.count(), \
+            'Проверьте, что при POST запросе на `/api/v1/group/` создается группа'
+
+        response = user_client.post('/api/v1/follow/', data=data)
+        assert response.status_code == 400, \
+            'Проверьте, что при POST запросе на `/api/v1/follow/` ' \
+            'на уже подписанного автора должен возвращаться статус 400'
+
+    @pytest.mark.django_db(transaction=True)
+    def test_follow_search_filter(self, user_client, follow_1, follow_2, follow_3, follow_4,
+                                  user, user_2, another_user):
+        follow_count = Follow.objects.count()
+
+        response = user_client.get('/api/v1/follow/')
+        assert response.status_code == 200, \
+            'Страница `/api/v1/follow/` не найдена, проверьте этот адрес в *urls.py*'
+        test_data = response.json()
+        assert len(test_data) == 4, \
+            'Проверьте, что при GET запросе на `/api/v1/follow/` возвращается список всех подписок'
+
+        response = user_client.get(f'/api/v1/follow/?search={user.username}')
+        assert len(response.json()) == 2, \
+            'Проверьте, что при GET запросе с параметром `search` на `/api/v1/follow/` ' \
+            'возвращается список соответствующих подписок'
+
+        response = user_client.get(f'/api/v1/follow/?search={user_2.username}')
+        assert len(response.json()) == 3, \
+            'Проверьте, что при GET запросе с параметром `search` на `/api/v1/follow/` ' \
+            'возвращается список соответствующих подписок'

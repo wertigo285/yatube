@@ -1,139 +1,122 @@
-from io import BytesIO
-
 import pytest
-from PIL import Image
-from django import forms
-from django.contrib.auth import get_user_model
-from django.core.files.base import File
 from posts.models import Post
-from django.db.models.query import QuerySet
-
-def get_field_context(context, field_type):
-    for field in context.keys():
-        if field not in ('user', 'request') and type(context[field]) == field_type:
-            return context[field]
-    return
 
 
-class TestPostView:
+class TestPostAPI:
 
     @pytest.mark.django_db(transaction=True)
-    def test_post_view_get(self, client, post_with_group):
-        try:
-            response = client.get(f'/{post_with_group.author.username}/{post_with_group.id}')
-        except Exception as e:
-            assert False, f'''Страница `/<username>/<post_id>/` работает неправильно. Ошибка: `{e}`'''
-        if response.status_code in (301, 302):
-            response = client.get(f'/{post_with_group.author.username}/{post_with_group.id}/')
-        assert response.status_code != 404, \
-            'Страница `/<username>/<post_id>/` не найдена, проверьте этот адрес в *urls.py*'
+    def test_post_not_found(self, client, post):
+        response = client.get('/api/v1/posts/')
 
-        profile_context = get_field_context(response.context, get_user_model())
-        assert profile_context is not None, \
-            'Проверьте, что передали автора в контекст страницы `/<username>/<post_id>/`'
-
-        post_context = get_field_context(response.context, Post)
-        assert post_context is not None, \
-            'Проверьте, что передали статью в контекст страницы `/<username>/<post_id>/` типа `Post`'
-
-        try:
-            from posts.forms import CommentForm
-        except ImportError:
-            assert False, 'Не найдена форма CommentForm в posts.form'
-
-        comment_form_context = get_field_context(response.context, CommentForm)
-        assert comment_form_context is not None, \
-            'Проверьте, что передали форму комментария в контекст страницы `/<username>/<post_id>/` типа `CommentForm`'
-        assert len(comment_form_context.fields) == 1, \
-            'Проверьте, что форма комментария в контекстке страницы `/<username>/<post_id>/` состоит из одного поля'
-        assert 'text' in comment_form_context.fields, \
-            'Проверьте, что форма комментария в контекстке страницы `/<username>/<post_id>/` содержится поле `text`'
-        assert type(comment_form_context.fields['text']) == forms.fields.CharField, \
-            'Проверьте, что форма комментария в контекстке страницы `/<username>/<post_id>/` содержится поле `text` типа `CharField`'
-
-        comment_context = get_field_context(response.context, QuerySet)
-        assert comment_context is not None, \
-            'Проверьте, что передали список комментариев в контекст страницы `/<username>/<post_id>/` типа `QuerySet`'
-
-
-class TestPostEditView:
+        assert response.status_code != 404, 'Страница `/api/v1/posts/` не найдена, проверьте этот адрес в *urls.py*'
 
     @pytest.mark.django_db(transaction=True)
-    def test_post_edit_view_get(self, client, post_with_group):
-        try:
-            response = client.get(f'/{post_with_group.author.username}/{post_with_group.id}/edit')
-        except Exception as e:
-            assert False, f'''Страница `/<username>/<post_id>/edit/` работает неправильно. Ошибка: `{e}`'''
-        if response.status_code in (301, 302) and not response.url.startswith(f'/{post_with_group.author.username}/{post_with_group.id}'):
-            response = client.get(f'/{post_with_group.author.username}/{post_with_group.id}/edit/')
-        assert response.status_code != 404, \
-            'Страница `/<username>/<post_id>/edit/` не найдена, проверьте этот адрес в *urls.py*'
+    def test_post_not_auth(self, client, post):
+        response = client.get('/api/v1/posts/')
 
-        assert response.status_code in (301, 302), \
-            'Проверьте, что вы переадресуете пользователя со страницы `/<username>/<post_id>/edit/` на страницу поста, если он не автор'
+        assert response.status_code == 200,\
+            'Проверьте, что `/api/v1/posts/` при запросе без токена возвращаете статус 200'
 
     @pytest.mark.django_db(transaction=True)
-    def test_post_edit_view_author_get(self, user_client, post_with_group):
-        try:
-            response = user_client.get(f'/{post_with_group.author.username}/{post_with_group.id}/edit')
-        except Exception as e:
-            assert False, f'''Страница `/<username>/<post_id>/edit/` работает неправильно. Ошибка: `{e}`'''
-        if response.status_code in (301, 302):
-            response = user_client.get(f'/{post_with_group.author.username}/{post_with_group.id}/edit/')
-        assert response.status_code != 404, \
-            'Страница `/<username>/<post_id>/edit/` не найдена, проверьте этот адрес в *urls.py*'
+    def test_posts_get(self, user_client, post, another_post):
+        response = user_client.get('/api/v1/posts/')
+        assert response.status_code == 200, \
+            'Проверьте, что при GET запросе `/api/v1/posts/` с токеном авторизации возвращаетсся статус 200'
 
-        post_context = get_field_context(response.context, Post)
-        assert post_context is not None, \
-            'Проверьте, что передали статью в контекст страницы `/<username>/<post_id>/edit/` типа `Post`'
+        test_data = response.json()
 
-        assert 'form' in response.context, \
-            'Проверьте, что передали форму `form` в контекст страницы `/<username>/<post_id>/edit/`'
-        assert len(response.context['form'].fields) == 3, \
-            'Проверьте, что в форме `form` на страницу `/<username>/<post_id>/edit/` 3 поля'
-        assert 'group' in response.context['form'].fields, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` есть поле `group`'
-        assert type(response.context['form'].fields['group']) == forms.models.ModelChoiceField, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` поле `group` типа `ModelChoiceField`'
-        assert not response.context['form'].fields['group'].required, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` поле `group` не обязательно'
+        assert type(test_data) == list, 'Проверьте, что при GET запросе на `/api/v1/posts/` возвращается список'
 
-        assert 'text' in response.context['form'].fields, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` есть поле `text`'
-        assert type(response.context['form'].fields['text']) == forms.fields.CharField, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` поле `text` типа `CharField`'
-        assert response.context['form'].fields['text'].required, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` поле `group` обязательно'
+        assert len(test_data) == Post.objects.count(), \
+            'Проверьте, что при GET запросе на `/api/v1/posts/` возвращается весь список статей'
 
-        assert 'image' in response.context['form'].fields, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` есть поле `image`'
-        assert type(response.context['form'].fields['image']) == forms.fields.ImageField, \
-            'Проверьте, что в форме `form` на странице `/<username>/<post_id>/edit/` поле `image` типа `ImageField`'
+        post = Post.objects.all()[0]
+        test_post = test_data[0]
+        assert 'id' in test_post, 'Проверьте, что добавили `id` в список полей `fields` сериализатора модели Post'
+        assert 'text' in test_post, 'Проверьте, что добавили `text` в список полей `fields` сериализатора модели Post'
+        assert 'author' in test_post, \
+            'Проверьте, что добавили `author` в список полей `fields` сериализатора модели Post'
+        assert 'pub_date' in test_post, \
+            'Проверьте, что добавили `pub_date` в список полей `fields` сериализатора модели Post'
+        assert test_post['author'] == post.author.username, \
+            'Проверьте, что `author` сериализатора модели Post возвращает имя пользователя'
 
-    @staticmethod
-    def get_image_file(name, ext='png', size=(50, 50), color=(256, 0, 0)):
-        file_obj = BytesIO()
-        image = Image.new("RGBA", size=size, color=color)
-        image.save(file_obj, ext)
-        file_obj.seek(0)
-        return File(file_obj, name=name)
+        assert test_post['id'] == post.id, \
+            'Проверьте, что при GET запросе на `/api/v1/posts/` возвращается весь список статей'
 
     @pytest.mark.django_db(transaction=True)
-    def test_post_edit_view_author_post(self, user_client, post_with_group):
-        text = 'Проверка изменения поста!'
-        try:
-            response = user_client.get(f'/{post_with_group.author.username}/{post_with_group.id}/edit')
-        except Exception as e:
-            assert False, f'''Страница `/<username>/<post_id>/edit/` работает неправильно. Ошибка: `{e}`'''
-        url = f'/{post_with_group.author.username}/{post_with_group.id}/edit/' if response.status_code in (301, 302) else f'/{post_with_group.author.username}/{post_with_group.id}/edit'
+    def test_post_create(self, user_client, user, another_user):
+        post_count = Post.objects.count()
 
-        image = self.get_image_file('image2.png')
-        response = user_client.post(url, data={'text': text, 'group': post_with_group.group_id, 'image': image})
+        data = {}
+        response = user_client.post('/api/v1/posts/', data=data)
+        assert response.status_code == 400, \
+            'Проверьте, что при POST запросе на `/api/v1/posts/` с не правильными данными возвращается статус 400'
 
-        assert response.status_code in (301, 302), \
-            'Проверьте, что со страницы `/<username>/<post_id>/edit/` после создания поста перенаправляете на страницу поста'
-        post = Post.objects.filter(author=post_with_group.author, text=text, group=post_with_group.group).first()
-        assert post is not None, \
-            'Проверьте, что вы изминили пост при отправки формы на странице `/<username>/<post_id>/edit/`'
-        assert response.url.startswith(f'/{post_with_group.author.username}/{post_with_group.id}'),\
-            'Проверьте, что перенаправляете на страницу поста `/<username>/<post_id>/`'
+        data = {'author': another_user.id, 'text': 'Статья номер 3'}
+        response = user_client.post('/api/v1/posts/', data=data)
+        assert response.status_code == 201, \
+            'Проверьте, что при POST запросе на `/api/v1/posts/` с правильными данными возвращается статус 201'
+
+        test_data = response.json()
+
+        msg_error = 'Проверьте, что при POST запросе на `/api/v1/posts/` возвращается словарь с данными новой статьи'
+        assert type(test_data) == dict, msg_error
+        assert test_data.get('text') == data['text'], msg_error
+
+        assert test_data.get('author') == user.username, \
+            'Проверьте, что при POST запросе на `/api/v1/posts/` создается статья от авторизованного пользователя'
+        assert post_count + 1 == Post.objects.count(), \
+            'Проверьте, что при POST запросе на `/api/v1/posts/` создается статья'
+
+    @pytest.mark.django_db(transaction=True)
+    def test_post_get_current(self, user_client, post, user):
+        response = user_client.get(f'/api/v1/posts/{post.id}/')
+
+        assert response.status_code == 200, \
+            'Страница `/api/v1/posts/{id}/` не найдена, проверьте этот адрес в *urls.py*'
+
+        test_data = response.json()
+        assert test_data.get('text') == post.text, \
+            'Проверьте, что при GET запросе `/api/v1/posts/{id}/` возвращаете данные сериализатора, ' \
+            'не найдено или не правильное значение `text`'
+        assert test_data.get('author') == user.username, \
+            'Проверьте, что при GET запросе `/api/v1/posts/{id}/` возвращаете данные сериализатора, ' \
+            'не найдено или не правильное значение `author`, должно возвращать имя пользователя '
+
+    @pytest.mark.django_db(transaction=True)
+    def test_post_patch_current(self, user_client, post, another_post):
+        response = user_client.patch(f'/api/v1/posts/{post.id}/',
+                                     data={'text': 'Поменяли текст статьи'})
+
+        assert response.status_code == 200, \
+            'Проверьте, что при PATCH запросе `/api/v1/posts/{id}/` возвращаете статус 200'
+
+        test_post = Post.objects.filter(id=post.id).first()
+
+        assert test_post, 'Проверьте, что при PATCH запросе `/api/v1/posts/{id}/` вы не удалили статью'
+
+        assert test_post.text == 'Поменяли текст статьи', \
+            'Проверьте, что при PATCH запросе `/api/v1/posts/{id}/` вы изменяете статью'
+
+        response = user_client.patch(f'/api/v1/posts/{another_post.id}/',
+                                     data={'text': 'Поменяли текст статьи'})
+
+        assert response.status_code == 403, \
+            'Проверьте, что при PATCH запросе `/api/v1/posts/{id}/` для не своей статьи возвращаете статус 403'
+
+    @pytest.mark.django_db(transaction=True)
+    def test_post_delete_current(self, user_client, post, another_post):
+        response = user_client.delete(f'/api/v1/posts/{post.id}/')
+
+        assert response.status_code == 204, \
+            'Проверьте, что при DELETE запросе `/api/v1/posts/{id}/` возвращаете статус 204'
+
+        test_post = Post.objects.filter(id=post.id).first()
+
+        assert not test_post, 'Проверьте, что при DELETE запросе `/api/v1/posts/{id}/` вы удалили статью'
+
+        response = user_client.delete(f'/api/v1/posts/{another_post.id}/')
+
+        assert response.status_code == 403, \
+            'Проверьте, что при DELETE запросе `/api/v1/posts/{id}/` для не своей статьи возвращаете статус 403'

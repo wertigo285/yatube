@@ -1,9 +1,16 @@
 
 ![Foodgram workflow](https://github.com/wertigo285/yatube/workflows/yatube/badge.svg)
-# Проект "Yatube"
+# Проект "Yatube" REST api
 
 
-Учебный проект, по разработке Yatube — онлайн-сервиса для публикации дневников, пользователи которого могут подписываться на публикации понравившихся авторов.
+Учебный проект, по разработке Yatube — онлайн-сервиса для публикации дневников, пользователи которого могут подписываться на публикации понравившихся авторов. 
+
+Для проекта, на базе DRF, разработанно REST API c JWT авторизацией. Незарегистрированному пользователю доступны методы просмотра, после регистрации пользователя на сайте появляется возможность получить JWT-токен и изменять данные.
+
+После запуска проекта описание API доступно по адресу:
+```
+http://127.0.0.1:8000/redoc/
+```
 
 
 ## Установка
@@ -16,6 +23,19 @@
 
 ```
 git clone git@github.com:wertigo285/yatube.git 
+```
+
+## Тестирование проекта
+
+Тесты для REST api написанны на pytest.
+Для запуска в папке проекта выполнить команду:
+```
+pytest
+```
+
+Тесты для веб-приложения написанный на djaingo-unittest:
+```
+python manage.py test
 ```
 
 
@@ -39,7 +59,6 @@ docker exec -it web python manage.py migrate
 docker exec -it web python manage.py collectstatic
 docker exec -it web python manage.py loaddata data_dump.json
 ```
-
 
 ## Управление запущенным приложением
 
@@ -72,6 +91,9 @@ docker-compose down
 
 * [Python 3.8](https://www.python.org/)
 * [Django](https://www.djangoproject.com/)
+* [Django REST framework](https://www.django-rest-framework.org/)
+* [django-filter](https://django-filter.readthedocs.io/en/stable/)
+* [pytest](https://docs.pytest.org/en/stable/)
 * [Docker](https://www.docker.com/)
 * [SQLite](https://www.sqlite.org/)
 * [NGINX](https://nginx.org/)

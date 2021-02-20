@@ -22,10 +22,10 @@ jobs:
     - name: Lint with flake8
       run: flake8 .
 
-    - name: Test with pytest
+    - name: Test API with pytest
       run: pytest
 
-    - name: Test with django test
+    - name: Test project with django test
       run: python manage.py test
   
   build_and_push_to_docker_hub:

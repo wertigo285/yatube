@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth import get_user_model
+from django.template.defaultfilters import slugify
 
 User = get_user_model()
 
@@ -8,6 +9,11 @@ class Group(models.Model):
     title = models.CharField('title', max_length=200)
     slug = models.SlugField('slug', max_length=50, unique=True)
     description = models.TextField('description')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.slug:
+            self.slug = slugify(self.title)
 
     def __str__(self):
         return f'/{self.slug}/{self.title}'
@@ -34,7 +40,7 @@ class Post(models.Model):
 
 class Comment(models.Model):
     post = models.ForeignKey(
-        Post, on_delete=models.CASCADE, related_name='post_comments')
+        Post, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='author_comments')
     text = models.TextField()
