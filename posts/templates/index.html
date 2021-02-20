@@ -3,16 +3,16 @@
 
 {% block content %}
 {% load cache %}
-{% cache 20 index_page page_obj.number %}  
     <div class="container">
         {% include "menu.html" with index=True %}
+           {% cache 20 index_page page_obj.number %}  
            <h1> Последние обновления на сайте</h1>
                 {% for post in page_obj %}
                     {% include "post_item.html" with post=post %}
                 {% endfor %}
     </div>
-{% endcache %}
         {% if is_paginated %}
             {% include "paginator.html" with items=page_obj paginator=paginator%}
         {% endif %}
+        {% endcache %}
 {% endblock %}

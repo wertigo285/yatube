@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  web:
+    build: . 
+    container_name: web
+    restart: always
+    command: "gunicorn yatube.wsgi:application --bind 0.0.0.0:8000"
+    expose:
+      - "8000"
+    volumes:
+      - static_data:/code/static
+      - media_data:/code/media
+    env_file:
+      - ./.env
+  nginx:
+    image: nginx:1.19.6
+    container_name: nginx
+    restart: always
+    ports:
+      - "8000:8000"
+    depends_on:
+      - web
+    environment:
+      - DOMAIN=${DOMAIN}
+    env_file:
+      - ./.env
+    volumes:
+      - static_data:/www/static/
+      - media_data:/www/media/
+      - ./nginx:/etc/nginx/templates
+    
+
+volumes:
+  static_data:
+  media_data:

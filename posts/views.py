@@ -144,28 +144,29 @@ class CommentCreate(LoginRequiredMixin, CreateView):
         return reverse_lazy('post', kwargs=self.kwargs)
 
 
-class FollowMixin(RedirectView):
+class FollowView(LoginRequiredMixin, RedirectView):
 
     def get_redirect_url(self, *args, **kwargs):
         return reverse_lazy('profile', kwargs=self.kwargs)
 
-    def is_author(self, request, **kwargs):
+    def _is_author(self, request, **kwargs):
         self.author = get_object_or_404(User, **kwargs)
-        return request.user == self.author
+        user = request.user
+        return user == self.author if not user.is_anonymous else True 
 
 
-class FollowCreate(FollowMixin):
+class FollowCreate(FollowView):
 
     def get(self, request, *args, **kwargs):
-        if not self.is_author(request, **kwargs):
+        if not self._is_author(request, **kwargs):
             Follow.objects.get_or_create(user=request.user, author=self.author)
         return super().get(request, *args, **kwargs)
 
 
-class FollowDelete(FollowMixin):
+class FollowDelete(FollowView):
 
     def get(self, request, *args, **kwargs):
-        if not self.is_author(request, **kwargs):
+        if not self._is_author(request, **kwargs):
             Follow.objects.filter(
                 user=request.user, author=self.author).delete()
         return super().get(request, *args, **kwargs)
@@ -191,7 +192,7 @@ class ErrorView(TemplateView):
         return view_fn
 
 
-class Template404View(ErrorView):
+class Error404View(ErrorView):
     template_name = "misc/404.html"
     code = 404
 
@@ -201,6 +202,6 @@ class Template404View(ErrorView):
         return context
 
 
-class Template500View(ErrorView):
+class Error500View(ErrorView):
     template_name = "misc/500.html"
     code = 500

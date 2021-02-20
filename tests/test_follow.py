@@ -113,27 +113,27 @@ class TestFollow:
             'Проверьте, что передали переменную `paginator` в контекст страницы `/follow/`'
         assert type(response.context['paginator']) == Paginator, \
             'Проверьте, что переменная `paginator` на странице `/follow/` типа `Paginator`'
-        assert 'page' in response.context, \
+        assert 'page_obj' in response.context, \
             'Проверьте, что передали переменную `page` в контекст страницы `/follow/`'
-        assert type(response.context['page']) == Page, \
+        assert type(response.context['page_obj']) == Page, \
             'Проверьте, что переменная `page` на странице `/follow/` типа `Page`'
-        assert len(response.context['page']) == 2, \
+        assert len(response.context['page_obj']) == 2, \
             'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
 
         self.check_url(user_client, f'/{user_2.username}/follow', '/<username>/follow/')
         assert user.follower.count() == 2, 'Проверьте, что вы можете подписаться на пользователя'
         response = self.check_url(user_client, f'/follow', '/follow/')
-        assert len(response.context['page']) == 5, \
+        assert len(response.context['page_obj']) == 5, \
             'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
 
         self.check_url(user_client, f'/{user_1.username}/unfollow', '/<username>/unfollow/')
         assert user.follower.count() == 1, 'Проверьте, что вы можете отписаться от пользователя'
         response = self.check_url(user_client, f'/follow', '/follow/')
-        assert len(response.context['page']) == 3, \
+        assert len(response.context['page_obj']) == 3, \
             'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'
 
         self.check_url(user_client, f'/{user_2.username}/unfollow', '/<username>/unfollow/')
         assert user.follower.count() == 0, 'Проверьте, что вы можете отписаться от пользователя'
         response = self.check_url(user_client, f'/follow', '/follow/')
-        assert len(response.context['page']) == 0, \
+        assert len(response.context['page_obj']) == 0, \
             'Проверьте, что на странице `/follow/` список статей авторов на которых подписаны'

@@ -24,13 +24,9 @@ SECRET_KEY = '_sszc-jy!jirpth!(tnj48#alsramu-g1bxsc5c67o*3x=ltc7'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+LOGGING = False
 
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '[::1]',
-    'testserver',
-]
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -142,10 +138,7 @@ LOGIN_URL = '/auth/login/'
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'index'
 
-#  подключаем движок filebased.EmailBackend
-EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-# указываем директорию, в которую будут складываться файлы писем
-EMAIL_FILE_PATH = os.path.join(BASE_DIR, 'sent_emails')
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 CACHES = {
     'default': {
@@ -153,27 +146,25 @@ CACHES = {
     }
 }
 
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'handlers': {
-#         'console': {
-#             # logging handler that outputs log messages to terminal
-#             'class': 'logging.StreamHandler',
-#             'level': 'DEBUG',  # message level to be written to console
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console'],
-#             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
-#         },
-#         'django.db': {
-#             # django also has database level logging
-#             'handlers': ['console'],
-#             'level': 'DEBUG',
-#             'propagate': False,  # this tells logger to send logging message
-#             # to its parent (will send if set to True)
-#         },
-#     },
-# }
+if LOGGING:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+                'level': 'DEBUG',
+            },
+        },
+        'loggers': {
+            # 'django': {
+            #     'handlers': ['console'],
+            #     'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            # },
+            'django.db': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': False,
+            },
+        },
+    }
