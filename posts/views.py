@@ -152,7 +152,7 @@ class FollowView(LoginRequiredMixin, RedirectView):
     def _is_author(self, request, **kwargs):
         self.author = get_object_or_404(User, **kwargs)
         user = request.user
-        return user == self.author if not user.is_anonymous else True 
+        return user == self.author if not user.is_anonymous else True
 
 
 class FollowCreate(FollowView):

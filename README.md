@@ -1,5 +1,5 @@
 
-![Foodgram workflow](https://github.com/wertigo285/foodgram-project/workflows/Foodgram/badge.svg)
+![Foodgram workflow](https://github.com/wertigo285/yatube/workflows/yatube/badge.svg)
 # Проект "Yatube"
 
 
@@ -32,7 +32,7 @@ docker-compose up
 * nginx - контейнер с веб-серером
 
 
-Для начального заполнения базы данных тэгами и ингредиентами в корневой папке проекта необходимо выполнить команды:
+Для начального заполнения базы тестовыми данными в корневой папке проекта необходимо выполнить команды:
 ```
 docker exec -it web python manage.py makemigrations
 docker exec -it web python manage.py migrate
@@ -73,4 +73,5 @@ docker-compose down
 * [Python 3.8](https://www.python.org/)
 * [Django](https://www.djangoproject.com/)
 * [Docker](https://www.docker.com/)
+* [SQLite](https://www.sqlite.org/)
 * [NGINX](https://nginx.org/)
